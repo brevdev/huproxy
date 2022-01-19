@@ -35,6 +35,8 @@ var (
 	handshakeTimeout = flag.Duration("handshake_timeout", 10*time.Second, "Handshake timeout.")
 	writeTimeout     = flag.Duration("write_timeout", 10*time.Second, "Write timeout.")
 	url              = flag.String("url", "proxy", "Path to listen to.")
+	forwardedHost    = flag.String("forwarded_host", "localhost", "host to forward to")
+	forwardedPort    = flag.String("forwarded_port", "22", "port to forward to")
 
 	upgrader websocket.Upgrader
 )
@@ -43,9 +45,8 @@ func handleProxy(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
 
-	vars := mux.Vars(r)
-	host := vars["host"]
-	port := vars["port"]
+	host := *forwardedHost
+	port := *forwardedPort
 
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -114,7 +115,7 @@ func main() {
 
 	log.Infof("huproxy %s", huproxy.Version)
 	m := mux.NewRouter()
-	m.HandleFunc(fmt.Sprintf("/%s/{host}/{port}", *url), handleProxy)
+	m.HandleFunc(fmt.Sprintf("/%s", *url), handleProxy)
 	s := &http.Server{
 		Addr:           *listen,
 		Handler:        m,
